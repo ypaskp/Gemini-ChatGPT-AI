@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Gemini / ChatGPT Demo (single‑file)</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif;background:#f9f9f9;margin:0;padding:0;}
+  .container{max-width:700px;margin:3rem auto;padding:1rem;background:#fff;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.1);}
+  textarea{width:100%;height:120px;padding:.8rem;font-size:1rem;border:1px solid #ccc;border-radius:4px;resize:vertical;}
+  button{margin-top:.8rem;padding:.6rem 1.2rem;font-size:1rem;background:#0066cc;color:#fff;border:none;border-radius:4px;cursor:pointer;}
+  button:hover{background:#005bb5;}
+  #loading{margin-top:.8rem;font-style:italic;}
+  #reply{margin-top:1rem;padding:.8rem;background:#f0f0f0;border-radius:4px;}
+  #modelSelect{margin-top:.8rem;}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Gemini / ChatGPT Demo</h1>
+
+  <label for="modelSelect">モデルを選択:</label>
+  <select id="modelSelect">
+    <option value="openai">OpenAI (gpt‑4o‑mini)</option>
+    <option value="gemini">Gemini (gemini‑1.5‑pro)</option>
+  </select>
+
+  <textarea id="prompt" placeholder="質問やプロンプトを入力"></textarea>
+  <button id="sendBtn">送信</button>
+
+  <div id="loading" style="display:none;">💬 生成中…</div>
+  <div id="reply"></div>
+</div>
+
+<script>
+/* ------------------------------------------------------
+   1. API キー設定（ご自身のキーを貼り付けてください）
+   ------------------------------------------------------ */
+const API_KEY = 'YOUR_API_KEY_HERE';   // 例: 'sk-xxxxxxxxxxxxxxxxxxxxxxxx'
+const USE_GEMINI = false;              // true にすると Gemini を呼び出します
+
+/* ------------------------------------------------------
+   2. 送信処理
+   ------------------------------------------------------ */
+document.getElementById('sendBtn').addEventListener('click', async () => {
+  const prompt = document.getElementById('prompt').value.trim();
+  if (!prompt) return alert('プロンプトを入力してください。');
+  const replyEl = document.getElementById('reply');
+  const loadingEl = document.getElementById('loading');
+  replyEl.textContent = '';
+  loadingEl.style.display = 'block';
+
+  try {
+    const model = document.getElementById('modelSelect').value;
+    if (model === 'openai') {
+      /* ----- OpenAI (ChatGPT) ----- */
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',           // 変更したいモデルをここに
+          messages: [
+            {role: 'system', content: 'You are a helpful assistant.'},
+            {role: 'user', content: prompt}
+          ],
+          temperature: 0.7,
+          max_tokens: 600
+        })
+      });
+      if (!res.ok) throw new Error(`OpenAI error: ${res.status}`);
+      const data = await res.json();
+      replyEl.textContent = data.choices[0].message.content.trim();
+
+    } else if (model === 'gemini') {
+      /* ----- Gemini ----- */
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${API_KEY}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          contents: [{role: 'user', parts: [{text: prompt}]}]
+        })
+      });
+      if (!res.ok) throw new Error(`Gemini error: ${res.status}`);
+      const data = await res.json();
+      replyEl.textContent = data.candidates[0].content.parts[0].text.trim();
+    }
+  } catch (e) {
+    replyEl.textContent = `❌ エラー: ${e.message}`;
+  } finally {
+    loadingEl.style.display = 'none';
+  }
+});
+</script>
+</body>
+</html>
